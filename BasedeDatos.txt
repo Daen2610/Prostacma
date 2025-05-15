@@ -1,0 +1,75 @@
+CREATE TABLE Registros (
+    Numero_Parte VARCHAR(50) PRIMARY KEY,
+    Nombre VARCHAR(100) NOT NULL,
+    Espesor VARCHAR(50),
+    Ancho VARCHAR(50),
+    Especificaciones TEXT,
+    Peso_Blank varchar(50)
+);
+
+
+CREATE TABLE Almacen_Inv (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    Numero_Parte VARCHAR(50) NOT NULL,
+    Folio VARCHAR(50) NOT NULL,
+    Fecha DATE,
+    Peso_Bobina doublé,
+    TotalPiezas decimal(10,2),
+    FOREIGN KEY (Numero_Parte) REFERENCES Registros(Numero_Parte)
+);
+
+
+CREATE TABLE retiros (
+    id_retiro INT AUTO_INCREMENT PRIMARY KEY,
+    numero_parte VARCHAR(50),
+    folio VARCHAR(100) UNIQUE,
+    fecha_retiro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    total_piezas DECIMAL(10,2),
+    FOREIGN KEY (numero_parte) REFERENCES Registros(Numero_Parte)
+);
+
+
+CREATE TABLE Procesos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    numero_parte VARCHAR(50) NOT NULL,
+    nombre VARCHAR(255),
+    proyecto VARCHAR(100),
+    cliente VARCHAR(100),
+    paso VARCHAR(50),
+    proceso VARCHAR(255),
+    qty_nut INT,
+    piezas_golpe INT,
+    tipo_proceso VARCHAR(50),
+    area VARCHAR(50)
+);
+
+CREATE TABLE Seguimiento (
+    id_seguimiento INT AUTO_INCREMENT PRIMARY KEY,
+    folio_rollo VARCHAR(50) NOT NULL,
+    id_proceso INT NOT NULL,
+    piezas_completadas INT DEFAULT 0,
+    piezas_totales INT NOT NULL,
+    operador VARCHAR(50),
+    fecha_inicio TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    fecha_fin TIMESTAMP NULL,
+    aceptado BOOLEAN DEFAULT FALSE,
+    observaciones TEXT,
+    FOREIGN KEY (folio_rollo) REFERENCES retiros(folio) ON DELETE CASCADE,
+    FOREIGN KEY (id_proceso) REFERENCES Procesos(id)
+);
+
+CREATE TABLE WIP (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    folio VARCHAR(100),
+    numero_parte VARCHAR(50),
+    cantidad INT,
+    fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE Usuarios (
+    usuario_id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre_usuario VARCHAR(50) UNIQUE NOT NULL,
+    contrasena VARCHAR(255) NOT NULL,
+    permisos VARCHAR(255)
+);
+
