@@ -4,14 +4,9 @@
  */
 package Clases;
 import java.sql.*;
-import java.util.*;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 
-/**
- *
- * @author familiar
- */
 public class SeguimientoRollos {
     private Connection getConnection() throws SQLException {
         return MyConnection.getConnection(); // usa tu clase de conexión

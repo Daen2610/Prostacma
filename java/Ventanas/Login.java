@@ -80,7 +80,7 @@ public class Login extends javax.swing.JFrame {
                 usertxtActionPerformed(evt);
             }
         });
-        jPanel2.add(usertxt, new org.netbeans.lib.awtextra.AbsoluteConstraints(450, 176, 220, 30));
+        jPanel2.add(usertxt, new org.netbeans.lib.awtextra.AbsoluteConstraints(450, 176, 490, 30));
 
         jSeparator1.setForeground(new java.awt.Color(0, 0, 0));
         jPanel2.add(jSeparator1, new org.netbeans.lib.awtextra.AbsoluteConstraints(450, 210, 490, 20));
@@ -101,7 +101,7 @@ public class Login extends javax.swing.JFrame {
                 passtxtActionPerformed(evt);
             }
         });
-        jPanel2.add(passtxt, new org.netbeans.lib.awtextra.AbsoluteConstraints(450, 270, 250, 20));
+        jPanel2.add(passtxt, new org.netbeans.lib.awtextra.AbsoluteConstraints(450, 270, 490, 30));
 
         jSeparator2.setForeground(new java.awt.Color(0, 0, 0));
         jPanel2.add(jSeparator2, new org.netbeans.lib.awtextra.AbsoluteConstraints(450, 300, 490, 20));
