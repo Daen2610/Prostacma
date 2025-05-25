@@ -3,6 +3,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JFrame.java to edit this template
  */
 package Ventanas;
+import Clases.DisenoTabla;
 import Clases.MyConnection;
 import Clases.SeguimientoTemporal;
 import java.awt.Cursor;
@@ -10,8 +11,6 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Timestamp;
-import java.util.Vector;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.JOptionPane;
 
@@ -20,6 +19,7 @@ public class VentanaPiezasRetiradas extends javax.swing.JFrame {
     public VentanaPiezasRetiradas() {
         initComponents();
         inicializarModeloTabla();
+        DisenoTabla.aplicarDisenoTabla(jTableRetirados);
     }
     @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
@@ -34,6 +34,7 @@ public class VentanaPiezasRetiradas extends javax.swing.JFrame {
         jButtonBuscar = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+        setResizable(false);
 
         jPanel1.setBackground(new java.awt.Color(220, 220, 220));
         jPanel1.setLayout(new org.netbeans.lib.awtextra.AbsoluteLayout());
@@ -112,25 +113,41 @@ public class VentanaPiezasRetiradas extends javax.swing.JFrame {
         return;
     }
 
-    String folio = (String) jTableRetirados.getValueAt(filaSeleccionada, 1);
+    // Obtener el folio de la columna correcta (columna 0)
+    String folio = (String) jTableRetirados.getValueAt(filaSeleccionada, 0);
+    
+    // Obtener el número de parte solo para mostrar en el mensaje
+    String numeroParte = (String) jTableRetirados.getValueAt(filaSeleccionada, 1);
+    
+    // Normalizar el folio
+    folio = folio.replace(" ", "_").trim();
     
     int confirmacion = JOptionPane.showConfirmDialog(this,
-        "¿Reincorporar el folio " + folio + " a producción?",
+        "¿Reincorporar el folio " + folio + " (Parte: " + numeroParte + ") a producción?",
         "Confirmar",
         JOptionPane.YES_NO_OPTION);
     
     if (confirmacion == JOptionPane.YES_OPTION) {
-        // Llamada al método modificado (pasando la tabla como parámetro)
-        if (SeguimientoTemporal.reincorporarPieza(folio, jTableRetirados)) {
+        try {
+            if (SeguimientoTemporal.reincorporarPieza(folio, jTableRetirados)) {
+                JOptionPane.showMessageDialog(this,
+                    "Folio " + folio + " reincorporado exitosamente",
+                    "Éxito",
+                    JOptionPane.INFORMATION_MESSAGE);
+                
+                // Actualizar la tabla
+                jButtonBuscarActionPerformed(evt);
+            }
+        } catch (Exception e) {
             JOptionPane.showMessageDialog(this,
-                "Rollo reincorporado exitosamente",
-                "Éxito",
-                JOptionPane.INFORMATION_MESSAGE);
+                "Error al reincorporar: " + e.getMessage(),
+                "Error",
+                JOptionPane.ERROR_MESSAGE);
         }
     }
     }//GEN-LAST:event_jButton1ActionPerformed
 private void inicializarModeloTabla() {
-    String[] columnNames = {
+   String[] columnNames = {
         "Folio", 
         "Número de Parte", 
         "Paso Actual", 
@@ -146,11 +163,14 @@ private void inicializarModeloTabla() {
                 case 3: // Piezas Realizadas
                 case 4: // Piezas Restantes
                     return Integer.class;
-                case 5: // Fecha de Retiro
-                    return Timestamp.class;
                 default:
-                    return String.class;
+                    return String.class; // Todas las demás columnas son String
             }
+        }
+        
+        @Override
+        public boolean isCellEditable(int row, int column) {
+            return false; // Hacer que todas las celdas no sean editables
         }
     };
     
@@ -162,42 +182,42 @@ private void inicializarModeloTabla() {
     
     try {
         DefaultTableModel model = (DefaultTableModel) jTableRetirados.getModel();
-        model.setRowCount(0);
+        model.setRowCount(0); // Limpiar tabla
+        
+        String sql = "SELECT " +
+                    "folio, " +
+                    "parte AS 'Número de Parte', " +
+                    "paso_actual AS 'Paso Actual', " +
+                    "piezas_realizadas AS 'Piezas Realizadas', " +
+                    "piezas_restantes AS 'Piezas Restantes', " +
+                    "DATE_FORMAT(fecha_retiro, '%d %b %Y') AS 'Fecha de Retiro' " + // Formatear como String
+                    "FROM Rollos_Retirados " +
+                    "WHERE reincorporado = FALSE " +
+                    "ORDER BY fecha_retiro DESC";
         
         try (Connection conn = MyConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(
-                 "SELECT folio, parte, paso_actual, piezas_realizadas, " +
-                 "piezas_restantes, fecha_retiro FROM Rollos_Retirados " +
-                 "ORDER BY fecha_retiro DESC");
+             PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
             
             while (rs.next()) {
                 model.addRow(new Object[]{
                     rs.getString("folio"),
-                    rs.getString("parte"),
-                    rs.getString("paso_actual"),
-                    rs.getInt("piezas_realizadas"),
-                    rs.getInt("piezas_restantes"),
-                    rs.getTimestamp("fecha_retiro")
+                    rs.getString("Número de Parte"),
+                    rs.getString("Paso Actual"),
+                    rs.getInt("Piezas Realizadas"),
+                    rs.getInt("Piezas Restantes"),
+                    rs.getString("Fecha de Retiro") // Obtener como String ya formateado
                 });
-            }
-            
-            // Depuración corregida
-            if (model.getRowCount() > 0) {
-                Vector firstRow = (Vector)model.getDataVector().elementAt(0);
-                System.out.println("Primer registro: " + firstRow);
             }
         }
     } catch (SQLException e) {
         JOptionPane.showMessageDialog(this,
-            "Error al consultar: " + e.getMessage(),
+            "Error al cargar datos: " + e.getMessage(),
             "Error",
             JOptionPane.ERROR_MESSAGE);
     } finally {
         setCursor(Cursor.getDefaultCursor());
         jButtonBuscar.setEnabled(true);
-        jTableRetirados.revalidate();
-        jTableRetirados.repaint();
     }
     }//GEN-LAST:event_jButtonBuscarActionPerformed
 

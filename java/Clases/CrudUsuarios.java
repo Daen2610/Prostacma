@@ -12,19 +12,20 @@ import javax.swing.table.DefaultTableModel;
 
 public class CrudUsuarios {
     
-        public static String obtenerPermisosSeleccionados(boolean checkConsultar, boolean checkAlmacenMP, boolean checkRegistroProd, boolean checkSeguimientoProd) {
+        public static String obtenerPermisosSeleccionados(boolean checkConsultar, boolean checkAlmacenMP, boolean checkRegistroProd, boolean checkSeguimientoProd, boolean checkEtiquetador) {
         StringBuilder permisos = new StringBuilder();
         if (checkConsultar) permisos.append("Consultar,");
         if (checkAlmacenMP) permisos.append("IngresarMP,");
         if (checkRegistroProd) permisos.append("Registros,");
         if (checkSeguimientoProd) permisos.append("ConsultaPiezas,");
+        if (checkEtiquetador) permisos.append("Etiquetador,");
         if (permisos.length() > 0) {
             permisos.deleteCharAt(permisos.length() - 1);
         }
         return permisos.toString();
     }
 
-    public static void limpiarCampos(javax.swing.JTextField txtNombreUsuario, javax.swing.JPasswordField txtContrasena, javax.swing.JPasswordField txtConfirmarContrasena, javax.swing.JTextField txtNombreCompleto, javax.swing.JCheckBox checkConsultar, javax.swing.JCheckBox checkAlmacenMP, javax.swing.JCheckBox checkRegistroProd, javax.swing.JCheckBox checkSeguimientoProd, javax.swing.JTable tablaUsuarios) {
+    public static void limpiarCampos(javax.swing.JTextField txtNombreUsuario, javax.swing.JPasswordField txtContrasena, javax.swing.JPasswordField txtConfirmarContrasena, javax.swing.JTextField txtNombreCompleto, javax.swing.JCheckBox checkConsultar, javax.swing.JCheckBox checkAlmacenMP, javax.swing.JCheckBox checkRegistroProd, javax.swing.JCheckBox checkSeguimientoProd, javax.swing.JCheckBox checkEtiquetador, javax.swing.JTable tablaUsuarios) {
         if (txtNombreUsuario != null) txtNombreUsuario.setText("");
         if (txtContrasena != null) txtContrasena.setText("");
         if (txtConfirmarContrasena != null) txtConfirmarContrasena.setText("");
@@ -33,6 +34,7 @@ public class CrudUsuarios {
         if (checkAlmacenMP != null) checkAlmacenMP.setSelected(false);
         if (checkRegistroProd != null) checkRegistroProd.setSelected(false);
         if (checkSeguimientoProd != null) checkSeguimientoProd.setSelected(false);
+        if (checkEtiquetador != null) checkEtiquetador.setSelected(false);
         if (tablaUsuarios != null) tablaUsuarios.clearSelection();
     }
 
@@ -92,7 +94,7 @@ public class CrudUsuarios {
             if (filasAfectadas > 0) {
                 JOptionPane.showMessageDialog(parentComponent, "Usuario agregado exitosamente.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
                 cargarUsuarios(modeloTabla, parentComponent);
-                limpiarCampos(null, null, null, null, null, null, null, null, null); // Limpiar campos en la interfaz
+                limpiarCampos(null, null, null, null, null, null, null, null, null, null); 
             } else {
                 JOptionPane.showMessageDialog(parentComponent, "No se pudo agregar el usuario.", "Error", JOptionPane.ERROR_MESSAGE);
             }
@@ -122,7 +124,7 @@ public class CrudUsuarios {
                 if (filasAfectadas > 0) {
                     JOptionPane.showMessageDialog(parentComponent, "Usuario eliminado exitosamente.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
                     cargarUsuarios(modeloTabla, parentComponent);
-                    limpiarCampos(null, null, null, null, null, null, null, null, null);
+                    limpiarCampos(null, null, null, null, null, null, null, null, null, null);
                 } else {
                     JOptionPane.showMessageDialog(parentComponent, "No se encontró el usuario para eliminar.", "Error", JOptionPane.ERROR_MESSAGE);
                 }
@@ -190,7 +192,7 @@ public class CrudUsuarios {
             if (filasAfectadas > 0) {
                 JOptionPane.showMessageDialog(parentComponent, "Usuario actualizado exitosamente.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
                 cargarUsuarios(modeloTabla, parentComponent);
-                limpiarCampos(null, null, null, null, null, null, null, null, null);
+                limpiarCampos(null, null, null, null, null, null, null, null, null, null);
             } else {
                 JOptionPane.showMessageDialog(parentComponent, "No se pudo actualizar el usuario.", "Error", JOptionPane.ERROR_MESSAGE);
             }

@@ -45,6 +45,7 @@ private DefaultTableModel modeloTabla;
         checkSeguimientoProd = new javax.swing.JCheckBox();
         jLabel8 = new javax.swing.JLabel();
         jButton1 = new javax.swing.JButton();
+        checkEtiquetador = new javax.swing.JCheckBox();
         jLabel3 = new javax.swing.JLabel();
         jLabel4 = new javax.swing.JLabel();
         jPanel4 = new javax.swing.JPanel();
@@ -57,6 +58,7 @@ private DefaultTableModel modeloTabla;
         jButton2 = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+        setResizable(false);
 
         jPanel1.setBackground(new java.awt.Color(220, 220, 220));
         jPanel1.setLayout(new org.netbeans.lib.awtextra.AbsoluteLayout());
@@ -109,6 +111,11 @@ private DefaultTableModel modeloTabla;
         checkRegistroProd.setText("Registro en Produccion");
 
         checkAlmacenMP.setText("Almacen de MP");
+        checkAlmacenMP.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                checkAlmacenMPActionPerformed(evt);
+            }
+        });
 
         checkSeguimientoProd.setText("Seguimiento de Produccion");
 
@@ -126,6 +133,8 @@ private DefaultTableModel modeloTabla;
             }
         });
 
+        checkEtiquetador.setText("Generador de Etiquetas");
+
         javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout(jPanel2);
         jPanel2.setLayout(jPanel2Layout);
         jPanel2Layout.setHorizontalGroup(
@@ -133,18 +142,19 @@ private DefaultTableModel modeloTabla;
             .addGroup(jPanel2Layout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(jPanel2Layout.createSequentialGroup()
-                        .addComponent(jLabel8)
-                        .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                    .addComponent(jLabel8)
                     .addGroup(jPanel2Layout.createSequentialGroup()
                         .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(checkConsultar, javax.swing.GroupLayout.PREFERRED_SIZE, 139, javax.swing.GroupLayout.PREFERRED_SIZE)
                             .addComponent(checkRegistroProd, javax.swing.GroupLayout.PREFERRED_SIZE, 166, javax.swing.GroupLayout.PREFERRED_SIZE))
                         .addGap(18, 18, 18)
                         .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(checkAlmacenMP, javax.swing.GroupLayout.PREFERRED_SIZE, 168, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(checkSeguimientoProd, javax.swing.GroupLayout.PREFERRED_SIZE, 188, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addGap(26, 236, Short.MAX_VALUE))))
+                            .addGroup(jPanel2Layout.createSequentialGroup()
+                                .addComponent(checkAlmacenMP, javax.swing.GroupLayout.PREFERRED_SIZE, 168, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addGap(41, 41, 41)
+                                .addComponent(checkEtiquetador))
+                            .addComponent(checkSeguimientoProd, javax.swing.GroupLayout.PREFERRED_SIZE, 188, javax.swing.GroupLayout.PREFERRED_SIZE))))
+                .addContainerGap(66, Short.MAX_VALUE))
             .addGroup(jPanel2Layout.createSequentialGroup()
                 .addGap(6, 6, 6)
                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -160,7 +170,7 @@ private DefaultTableModel modeloTabla;
                     .addComponent(txtNombreCompleto))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addComponent(jButton1, javax.swing.GroupLayout.PREFERRED_SIZE, 113, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(14, 14, 14))
+                .addGap(40, 40, 40))
         );
         jPanel2Layout.setVerticalGroup(
             jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -176,7 +186,7 @@ private DefaultTableModel modeloTabla;
                             .addComponent(jLabel5)
                             .addComponent(txtContrasena, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
                     .addGroup(jPanel2Layout.createSequentialGroup()
-                        .addGap(20, 20, 20)
+                        .addGap(22, 22, 22)
                         .addComponent(jButton1, javax.swing.GroupLayout.PREFERRED_SIZE, 45, javax.swing.GroupLayout.PREFERRED_SIZE)))
                 .addGap(18, 18, 18)
                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
@@ -191,7 +201,9 @@ private DefaultTableModel modeloTabla;
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(checkConsultar)
-                    .addComponent(checkAlmacenMP))
+                    .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                        .addComponent(checkAlmacenMP)
+                        .addComponent(checkEtiquetador)))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                     .addComponent(checkRegistroProd)
@@ -326,7 +338,8 @@ private DefaultTableModel modeloTabla;
                                  CrudUsuarios.obtenerPermisosSeleccionados(checkConsultar.isSelected(),
                                                                           checkAlmacenMP.isSelected(),
                                                                           checkRegistroProd.isSelected(),
-                                                                          checkSeguimientoProd.isSelected()),
+                                                                          checkSeguimientoProd.isSelected(),
+                                                                          checkEtiquetador.isSelected()),
                                  modeloTabla,
                                  this);
     }//GEN-LAST:event_AgregarActionPerformed
@@ -341,7 +354,7 @@ private DefaultTableModel modeloTabla;
     }//GEN-LAST:event_BuscarActionPerformed
 
     private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
-    CrudUsuarios.limpiarCampos(txtNombreUsuario, txtContrasena, txtConfirmarContrasena, txtNombreCompleto, checkConsultar, checkAlmacenMP, checkRegistroProd, checkSeguimientoProd, tablaUsuarios);
+    CrudUsuarios.limpiarCampos(txtNombreUsuario, txtContrasena, txtConfirmarContrasena, txtNombreCompleto, checkConsultar, checkAlmacenMP, checkRegistroProd, checkSeguimientoProd, checkEtiquetador, tablaUsuarios);
     }//GEN-LAST:event_jButton1ActionPerformed
 
     private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton2ActionPerformed
@@ -360,10 +373,15 @@ private DefaultTableModel modeloTabla;
             CrudUsuarios.obtenerPermisosSeleccionados(checkConsultar.isSelected(),
                 checkAlmacenMP.isSelected(),
                 checkRegistroProd.isSelected(),
+                checkEtiquetador.isSelected(),
                 checkSeguimientoProd.isSelected()),
             modeloTabla,
             this);
     }//GEN-LAST:event_ActualizarActionPerformed
+
+    private void checkAlmacenMPActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_checkAlmacenMPActionPerformed
+
+    }//GEN-LAST:event_checkAlmacenMPActionPerformed
 
     public static void main(String args[]) {
         /* Set the Nimbus look and feel */
@@ -402,6 +420,7 @@ private DefaultTableModel modeloTabla;
     private javax.swing.JButton Eliminar;
     private javax.swing.JCheckBox checkAlmacenMP;
     private javax.swing.JCheckBox checkConsultar;
+    private javax.swing.JCheckBox checkEtiquetador;
     private javax.swing.JCheckBox checkRegistroProd;
     private javax.swing.JCheckBox checkSeguimientoProd;
     private javax.swing.JButton jButton1;

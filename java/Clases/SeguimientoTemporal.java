@@ -7,8 +7,10 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import javax.swing.JOptionPane;
 import javax.swing.JTable;
+import javax.swing.SwingUtilities;
 import javax.swing.table.DefaultTableModel;
 
 public class SeguimientoTemporal {
@@ -74,71 +76,104 @@ private static boolean existeEnRetiros(Connection conn, String folio) throws SQL
     }
 }
     
-public static boolean reincorporarPieza(String folio, JTable tablaRetirados) {
+public static boolean reincorporarPieza(String folio, JTable tablaRetirados) throws SQLException {
     try (Connection conn = MyConnection.getConnection()) {
-        conn.setAutoCommit(false); // Iniciar transacción
+        conn.setAutoCommit(false);
 
         try {
-            // 1. Obtener datos del rollo retirado
-            Object[] datosRollo = obtenerDatosRolloRetirado(conn, folio);
-            if (datosRollo == null) {
-                JOptionPane.showMessageDialog(null, 
-                    "El folio no existe en Rollos_Retirados",
-                    "Error",
-                    JOptionPane.ERROR_MESSAGE);
-                return false;
+            // 1. Verificar que el folio existe
+            String checkSql = "SELECT parte, piezas_realizadas, piezas_restantes " +
+                            "FROM Rollos_Retirados " +
+                            "WHERE REPLACE(folio, ' ', '_') = ? " +
+                            "AND reincorporado = FALSE";
+            
+            Object[] datosRollo;
+            try (PreparedStatement ps = conn.prepareStatement(checkSql)) {
+                ps.setString(1, folio);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (!rs.next()) {
+                        throw new SQLException("El folio " + folio + " no existe en Rollos_Retirados o ya fue reincorporado");
+                    }
+                    datosRollo = new Object[]{
+                        rs.getString("parte"),
+                        rs.getInt("piezas_realizadas"),
+                        rs.getInt("piezas_restantes")
+                    };
+                }
             }
 
             String numeroParte = (String) datosRollo[0];
             int piezasRealizadas = (int) datosRollo[1];
             int piezasRestantes = (int) datosRollo[2];
 
-            // 2. Insertar en la tabla retiros
-            if (!insertarEnRetiros(conn, folio, numeroParte, piezasRealizadas + piezasRestantes)) {
-                JOptionPane.showMessageDialog(null,
-                    "Error al insertar en retiros",
-                    "Error",
-                    JOptionPane.ERROR_MESSAGE);
-                return false;
+            // 2. Insertar en retiros (versión mejorada)
+            String insertSql = "INSERT INTO retiros (folio, numero_parte, total_piezas, fecha_retiro) " +
+                             "VALUES (?, ?, ?, ?) " +
+                             "ON DUPLICATE KEY UPDATE " +
+                             "numero_parte = VALUES(numero_parte), " +
+                             "total_piezas = VALUES(total_piezas), " +
+                             "fecha_retiro = VALUES(fecha_retiro)";
+
+            try (PreparedStatement ps = conn.prepareStatement(insertSql)) {
+                ps.setString(1, folio);
+                ps.setString(2, numeroParte);
+                ps.setInt(3, piezasRealizadas + piezasRestantes);
+
+                // Obtener la fecha de retiro original del rollo retirado
+                String fechaSql = "SELECT fecha_retiro FROM Rollos_Retirados WHERE REPLACE(folio, ' ', '_') = ?";
+                try (PreparedStatement psFecha = conn.prepareStatement(fechaSql)) {
+                    psFecha.setString(1, folio);
+                    try (ResultSet rsFecha = psFecha.executeQuery()) {
+                        if (rsFecha.next()) {
+                            ps.setTimestamp(4, rsFecha.getTimestamp("fecha_retiro"));
+                        } else {
+                            ps.setTimestamp(4, new Timestamp(System.currentTimeMillis())); // Fecha actual si no hay
+                        }
+                    }
+                }
+                ps.executeUpdate();
             }
 
-            // 3. Actualizar estado en Rollos_Retirados (marcar como reincorporado)
-            if (!marcarComoReincorporado(conn, folio)) {
-                JOptionPane.showMessageDialog(null,
-                    "Error al actualizar Rollos_Retirados",
-                    "Error",
-                    JOptionPane.ERROR_MESSAGE);
-                return false;
+            // 3. Actualizar Rollos_Retirados
+            String updateSql = "UPDATE Rollos_Retirados " +
+                             "SET reincorporado = TRUE, " +
+                             "fecha_reincorporacion = NOW() " +
+                             "WHERE REPLACE(folio, ' ', '_') = ?";
+            
+            try (PreparedStatement ps = conn.prepareStatement(updateSql)) {
+                ps.setString(1, folio);
+                ps.executeUpdate();
             }
 
-            // 4. Registrar en el historial de seguimiento
+            // 4. Registrar en seguimiento
             registrarReincorporacion(conn, folio, piezasRealizadas, piezasRestantes);
 
-            conn.commit(); // Confirmar transacción
+            conn.commit();
 
-            // 5. Actualizar la tabla visual (si se proporcionó)
+            // 5. Actualizar tabla visual
             if (tablaRetirados != null) {
-                actualizarTablaVisual(tablaRetirados, folio);
+                SwingUtilities.invokeLater(() -> {
+                    DefaultTableModel model = (DefaultTableModel) tablaRetirados.getModel();
+                    for (int i = 0; i < model.getRowCount(); i++) {
+                        String folioTabla = ((String) model.getValueAt(i, 0)).replace(" ", "_");
+                        if (folio.equals(folioTabla)) {
+                            model.removeRow(i);
+                            break;
+                        }
+                    }
+                });
             }
 
             return true;
 
         } catch (SQLException e) {
             conn.rollback();
-            JOptionPane.showMessageDialog(null,
-                "Error en reincorporarPieza: " + e.getMessage(),
-                "Error",
-                JOptionPane.ERROR_MESSAGE);
-            return false;
+            throw e;
         }
-    } catch (SQLException e) {
-        JOptionPane.showMessageDialog(null,
-            "Error de conexión: " + e.getMessage(),
-            "Error",
-            JOptionPane.ERROR_MESSAGE);
-        return false;
     }
 }
+
+
 
 // Métodos auxiliares actualizados
 private static boolean marcarComoReincorporado(Connection conn, String folio) throws SQLException {
