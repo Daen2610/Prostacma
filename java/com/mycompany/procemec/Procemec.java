@@ -26,4 +26,4 @@ public static void main(String[] args) {
     }
   
 }
-//funcion para eliminar usuario
+//funcion para eliminar usuarios
