@@ -7,7 +7,6 @@ package Clases;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import javax.swing.JOptionPane;
 
 /**
  *
@@ -42,52 +41,6 @@ public class Eliminar {
                 }
             }
         }
-    }
-  
-     public boolean eliminarMateriaPrima(String numeroParteAEliminar) {
-        Connection conn = null;
-        PreparedStatement psRegistros = null;
-        PreparedStatement psProcesos = null;
-        boolean eliminacionExitosa = false;
-
-        try {
-            conn = MyConnection.getConnection();
-            conn.setAutoCommit(false);
-
-            // Eliminar de la tabla Registros
-            String sqlRegistros = "DELETE FROM Registros WHERE numero_parte = ?";
-            psRegistros = conn.prepareStatement(sqlRegistros);
-            psRegistros.setString(1, numeroParteAEliminar);
-            int registrosEliminados = psRegistros.executeUpdate();
-
-            // Eliminar de la tabla Procesos
-            String sqlProcesos = "DELETE FROM Procesos WHERE numero_parte = ?";
-            psProcesos = conn.prepareStatement(sqlProcesos);
-            psProcesos.setString(1, numeroParteAEliminar);
-            int procesosEliminados = psProcesos.executeUpdate();
-
-            conn.commit();
-            eliminacionExitosa = (registrosEliminados > 0 && procesosEliminados >= 0);
-
-        } catch (SQLException e) {
-            if (conn != null) {
-                try {
-                    conn.rollback();
-                } catch (SQLException rollbackEx) {
-                    JOptionPane.showMessageDialog(null, "Error al hacer rollback en DAO: " + rollbackEx.getMessage(), "Error de Rollback", JOptionPane.ERROR_MESSAGE);
-                }
-            }
-            JOptionPane.showMessageDialog(null, "Error al eliminar el registro en DAO: " + e.getMessage(), "Error de Base de Datos", JOptionPane.ERROR_MESSAGE);
-        } finally {
-            try {
-                if (psRegistros != null) psRegistros.close();
-                if (psProcesos != null) psProcesos.close();
-                if (conn != null) conn.close();
-            } catch (SQLException ex) {
-                JOptionPane.showMessageDialog(null, "Error al cerrar la conexión en DAO: " + ex.getMessage(), "Error de Conexión", JOptionPane.ERROR_MESSAGE);
-            }
-        }
-        return eliminacionExitosa;
     }
     
 }

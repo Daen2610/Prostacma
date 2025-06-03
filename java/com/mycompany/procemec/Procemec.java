@@ -4,9 +4,10 @@
 
 package com.mycompany.procemec;
 
-import Ventanas.Login;
+import Ventanas.PanelPrincipal;
 import javax.swing.JSpinner;
 import javax.swing.SpinnerNumberModel;
+import Ventanas.IngresarMP;
 /**
  *
  * @author familiar
@@ -15,7 +16,7 @@ public class Procemec {
 public static void main(String[] args) {
    // Crear una instancia de la ventana de registro
    
-        Login menu = new Login();
+        PanelPrincipal menu = new PanelPrincipal();
         // Hacer visible la ventana de registro
         menu.setVisible(true);
                 // Crear un SpinnerNumberModel para valores double
@@ -26,4 +27,3 @@ public static void main(String[] args) {
     }
   
 }
-//funcion para eliminar usuarios

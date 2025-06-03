@@ -5,6 +5,7 @@
 package Clases;
 
 import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -107,27 +108,25 @@ public static List<String[]> consultarPorNumeroParteONombre(String busqueda) {
 public static List<String[]> obtenerAlmacen() {
     List<String[]> registros = new ArrayList<>();
     Connection cnx = MyConnection.getConnection();
-
     if (cnx != null) {
         try {
-            String sql = "SELECT Numero_Parte, Fecha, Folio, Peso_Bobina, TotalPiezas FROM Almacen_Inv WHERE retirado IS NULL OR retirado = FALSE";
+            String sql = "SELECT Numero_Parte, Fecha, Folio, Peso_Bobina, TotalPiezas FROM Almacen_Inv";
             PreparedStatement statement = cnx.prepareStatement(sql);
             ResultSet resultSet = statement.executeQuery();
-
             while (resultSet.next()) {
                 String numeroParte = resultSet.getString("Numero_Parte");
                 String fecha = resultSet.getString("Fecha");
                 String folio = resultSet.getString("Folio");
-                String pesoBobina = resultSet.getString("Peso_Bobina");
-                String totalPiezas = resultSet.getString("TotalPiezas");
-
-                registros.add(new String[]{numeroParte, fecha, folio, pesoBobina, totalPiezas});
+                String PesoBobina = resultSet.getString("Peso_Bobina");
+                String totalpiezas = resultSet.getString("TotalPiezas");
+                
+                registros.add(new String[]{numeroParte, fecha, folio, PesoBobina, totalpiezas});
             }
         } catch (SQLException ex) {
             System.out.println("Error al obtener datos de la tabla Almacen_Inv: " + ex.getMessage());
         } finally {
             try {
-                cnx.close();
+                if (cnx != null) cnx.close();
             } catch (SQLException ex) {
                 System.out.println("Error al cerrar la conexión: " + ex.getMessage());
             }
@@ -142,34 +141,35 @@ public static List<String[]> consultarPorNumeroParteAlmacen(String numeroParte) 
 
     if (cnx != null) {
         try {
-            String sql = "SELECT Numero_Parte, Fecha, Folio, Peso_Bobina, TotalPiezas FROM Almacen_Inv WHERE (retirado IS NULL OR retirado = FALSE) AND Numero_Parte LIKE ?";
+            // Usar LIKE para búsquedas parciales
+            String sql = "SELECT Numero_Parte, Fecha, Folio, Peso_Bobina, TotalPiezas FROM Almacen_Inv WHERE Numero_Parte LIKE ?";
             PreparedStatement statement = cnx.prepareStatement(sql);
-            statement.setString(1, numeroParte + "%");
+            statement.setString(1, numeroParte + "%"); // Busca números de parte que comiencen con "numeroParte"
             ResultSet resultSet = statement.executeQuery();
 
             while (resultSet.next()) {
                 String nombre = resultSet.getString("Numero_Parte");
                 String fecha = resultSet.getString("Fecha");
                 String folio = resultSet.getString("Folio");
-                String pesoBobina = resultSet.getString("Peso_Bobina");
-                String totalPiezas = resultSet.getString("TotalPiezas");
+                String PesoBobina = resultSet.getString("Peso_Bobina");
+                String totalpiezas = resultSet.getString("TotalPiezas");
 
-                registros.add(new String[]{nombre, fecha, folio, pesoBobina, totalPiezas});
+                registros.add(new String[]{nombre, fecha, folio, PesoBobina, totalpiezas});
             }
         } catch (SQLException ex) {
             System.out.println("Error al consultar por número de parte: " + ex.getMessage());
         } finally {
             try {
-                cnx.close();
+                if (cnx != null) {
+                    cnx.close();
+                }
             } catch (SQLException ex) {
                 System.out.println("Error al cerrar la conexión: " + ex.getMessage());
             }
         }
     }
-
     return registros;
 }
-
 
 public static int obtenerCantidadActual(String numeroParte) {
     String sql = "SELECT Cantidad FROM Almacen_Inv WHERE Numero_Parte = ?";

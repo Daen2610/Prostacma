@@ -5,192 +5,200 @@
 package Clases;
 
 import java.sql.Connection;
+import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.List;
-import java.util.ArrayList;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.Collections;
+import java.time.LocalDate;
 
 /**
  *
  * @author familiar
  */
 public class SeguimientoPiezas {
+    
+public static boolean retirarPieza(String numeroParte, int cantidad, Date fecha, String folioBase) {
+    Connection conn = null;
+    try {
+        conn = MyConnection.getConnection();
+        conn.setAutoCommit(false); // Iniciar transacción
 
-    public static boolean retirarPiezaPorFolio(String folio, java.sql.Date fecha) {
-        Connection conn = null;
-
-        try {
-            conn = MyConnection.getConnection();
-            conn.setAutoCommit(false);
-
-            // 1. Obtener datos del rollo
-            String numeroParte;
-            double pesoBobina;
-            try (PreparedStatement ps = conn.prepareStatement("SELECT Numero_Parte, Peso_Bobina FROM Almacen_Inv WHERE Folio = ?")) {
-                ps.setString(1, folio);
-                try (ResultSet rs = ps.executeQuery()) {
-                    if (!rs.next()) {
-                        conn.rollback();
-                        System.out.println("Folio no existe en inventario.");
-                        return false;
-                    }
-                    numeroParte = rs.getString("Numero_Parte");
-                    pesoBobina = rs.getDouble("Peso_Bobina");
-                }
-            }
-
-            // 2. Verificar si es parte relacionada
-            boolean esRelacionada = false;
-            String partePrincipal = numeroParte;
-            try (PreparedStatement ps = conn.prepareStatement("SELECT parte_principal FROM Partes_Relacionadas WHERE parte_sub = ?")) {
-                ps.setString(1, numeroParte);
-                try (ResultSet rs = ps.executeQuery()) {
-                    if (rs.next()) {
-                        esRelacionada = true;
-                        partePrincipal = rs.getString("parte_principal");
-                    }
-                }
-            }
-
-            // 3. Obtener los procesos de la parte principal (ordenados por paso)
-            List<ProcesoInfo> procesos = new ArrayList<>();
-            try (PreparedStatement ps = conn.prepareStatement("""
-                SELECT p.id, p.numero_parte, r.Peso_Blank
-                FROM Procesos p
-                JOIN Registros r ON p.numero_parte = r.Numero_Parte
-                WHERE p.numero_parte IN (
-                    SELECT parte_sub FROM Partes_Relacionadas WHERE parte_principal = ?
-                    UNION SELECT ?
-                )
-                ORDER BY LENGTH(p.paso), p.paso
-            """)) {
-                ps.setString(1, partePrincipal);
-                ps.setString(2, partePrincipal);
-                try (ResultSet rs = ps.executeQuery()) {
-                    while (rs.next()) {
-                        String parte = rs.getString("numero_parte");
-                        int idProceso = rs.getInt("id");
-                        String pesoBlankStr = rs.getString("Peso_Blank");
-                        double pesoBlank = pesoBlankStr == null ? 0 : Double.parseDouble(pesoBlankStr);
-                        procesos.add(new ProcesoInfo(idProceso, parte, pesoBlank));
-                    }
-                }
-            }
-
-            if (procesos.isEmpty()) {
-                conn.rollback();
-                System.out.println("No hay procesos definidos para la parte: " + partePrincipal);
+        // 1️⃣ Verificar si la pieza existe en la tabla Registros antes de continuar
+        String sqlVerificar = "SELECT * FROM Registros WHERE Numero_Parte = ?";
+        try (PreparedStatement pstmtVerificar = conn.prepareStatement(sqlVerificar)) {
+            pstmtVerificar.setString(1, numeroParte);
+            ResultSet rs = pstmtVerificar.executeQuery();
+            if (!rs.next()) {
+                System.err.println("❌ ERROR: La pieza con Numero_Parte " + numeroParte + " no existe en Registros.");
                 return false;
             }
+        }
 
-            // 4. Calcular la cantidad mínima de piezas posibles según peso_blank (solo para procesos con peso_blank > 0)
-            int totalPiezas;
-            List<ProcesoInfo> conPeso = new ArrayList<>();
-            for (ProcesoInfo pi : procesos) {
-                if (pi.pesoBlank > 0) conPeso.add(pi);
+        // 2️⃣ Actualizar la cantidad en la tabla Almacen_Inv
+        String sqlAlmacen = "UPDATE Almacen_Inv SET Cantidad = Cantidad - ?, Fecha = ? WHERE Numero_Parte = ? AND Cantidad >= ?";
+        try (PreparedStatement pstmtAlmacen = conn.prepareStatement(sqlAlmacen)) {
+            pstmtAlmacen.setInt(1, cantidad);
+            pstmtAlmacen.setDate(2, new java.sql.Date(fecha.getTime()));
+            pstmtAlmacen.setString(3, numeroParte);
+            pstmtAlmacen.setInt(4, cantidad);
+
+            int filasAfectadas = pstmtAlmacen.executeUpdate();
+            System.out.println("🔄 Filas afectadas en Almacen_Inv: " + filasAfectadas);
+
+            if (filasAfectadas == 0) {
+                System.err.println("❌ ERROR: No se pudo actualizar Almacen_Inv. ¿Hay suficiente cantidad?");
+                conn.rollback();
+                return false;
             }
+        }
 
-            if (esRelacionada && !conPeso.isEmpty()) {
-                List<Integer> posiblesPorPaso = new ArrayList<>();
-                for (ProcesoInfo pi : conPeso) {
-                    int piezas = (int) (pesoBobina / pi.pesoBlank);
-                    posiblesPorPaso.add(piezas);
-                }
-                totalPiezas = Collections.min(posiblesPorPaso);
+        // 3️⃣ Insertar en la tabla Retiros
+        String sqlRetiros = "INSERT INTO Retiros (Numero_Parte, Folio) VALUES (?, ?)";
+        try (PreparedStatement pstmtRetiros = conn.prepareStatement(sqlRetiros)) {
+            for (int i = 1; i <= cantidad; i++) {
+                String folioRetiro = folioBase;
 
-                // Guardar excedente como WIP
-                for (ProcesoInfo pi : conPeso) {
-                    int piezasPosibles = (int) (pesoBobina / pi.pesoBlank);
-                    int sobrantes = piezasPosibles - totalPiezas;
-                    if (sobrantes > 0) {
-                        try (PreparedStatement ps = conn.prepareStatement(
-                            "INSERT INTO WIP (numero_parte, piezas_sobrantes, folio_origen, peso_blank, fecha) VALUES (?, ?, ?, ?, NOW())"
-                        )) {
-                            ps.setString(1, pi.numeroParte);
-                            ps.setInt(2, sobrantes);
-                            ps.setString(3, folio);
-                            ps.setDouble(4, pi.pesoBlank);
-                            ps.executeUpdate();
-                        }
+                // Verificar si el folio ya existe antes de insertar
+                String sqlVerificarFolio = "SELECT * FROM Retiros WHERE Folio = ?";
+                try (PreparedStatement pstmtVerificarFolio = conn.prepareStatement(sqlVerificarFolio)) {
+                    pstmtVerificarFolio.setString(1, folioRetiro);
+                    ResultSet rsFolio = pstmtVerificarFolio.executeQuery();
+                    if (rsFolio.next()) {
+                        System.err.println("⚠️ ERROR: El folio " + folioRetiro + " ya existe en Retiros. Se generará otro.");
+                        continue; // Saltar esta iteración y continuar con otro folio
                     }
                 }
-            } else {
-                // Lógica normal (solo dividir por peso_blank del primer paso)
-                double pesoBlankPrimero = procesos.get(0).pesoBlank;
-                if (pesoBlankPrimero <= 0) pesoBlankPrimero = 1; // evitar división por cero
-                totalPiezas = (int) (pesoBobina / pesoBlankPrimero);
+
+                pstmtRetiros.setString(1, numeroParte);
+                pstmtRetiros.setString(2, folioRetiro);
+                pstmtRetiros.addBatch();
+                System.out.println("✅ Insertando retiro: " + numeroParte + " - " + folioRetiro);
             }
+            int[] resultadoBatch = pstmtRetiros.executeBatch();
+            System.out.println("🟢 Registros insertados en Retiros: " + resultadoBatch.length);
+        }
 
-            // 5. Insertar en Retiros
-            try (PreparedStatement ps = conn.prepareStatement(
-                "INSERT INTO retiros (numero_parte, folio, fecha_retiro, total_piezas) VALUES (?, ?, ?, ?)"
-            )) {
-                ps.setString(1, numeroParte);
-                ps.setString(2, folio);
-                ps.setDate(3, fecha);
-                ps.setInt(4, totalPiezas);
-                ps.executeUpdate();
+        // 4️⃣ Confirmar la transacción
+        conn.commit();
+        System.out.println("🚀 Transacción confirmada con éxito.");
+        return true;
+    } catch (SQLException e) {
+        if (conn != null) {
+            try {
+                conn.rollback();
+                System.err.println("🔴 Transacción revertida.");
+            } catch (SQLException ex) {
+                System.err.println("🔴 Error al hacer rollback: " + ex.getMessage());
             }
-
-            // 6. Insertar seguimiento para primer paso
-            try (PreparedStatement ps = conn.prepareStatement(
-                "INSERT INTO Seguimiento (folio_rollo, id_proceso, piezas_totales) VALUES (?, ?, ?)"
-            )) {
-                ps.setString(1, folio);
-                ps.setInt(2, procesos.get(0).id);
-                ps.setInt(3, totalPiezas);
-                ps.executeUpdate();
+        }
+        System.err.println("🔴 Error SQL: " + e.getMessage());
+    } finally {
+        if (conn != null) {
+            try {
+                conn.setAutoCommit(true);
+                conn.close();
+            } catch (SQLException e) {
+                System.err.println("⚠️ Error al cerrar la conexión: " + e.getMessage());
             }
+        }
+    }
+    return false;
+}
 
-            // 7. Marcar el rollo como retirado
-            try (PreparedStatement ps = conn.prepareStatement("UPDATE Almacen_Inv SET retirado = TRUE WHERE Folio = ?")) {
-                ps.setString(1, folio);
-                ps.executeUpdate();
+    public static String obtenerNumeroParte(String folio) {
+    String sql = "SELECT Numero_Parte FROM Seguimiento WHERE Folio = ? LIMIT 1";
+    try (Connection conn = MyConnection.getConnection();
+         PreparedStatement pstmt = conn.prepareStatement(sql)) {
+        pstmt.setString(1, folio);
+        try (ResultSet rs = pstmt.executeQuery()) {
+            if (rs.next()) {
+                return rs.getString("Numero_Parte"); // Retorna el número de parte
             }
+        }
+    } catch (SQLException e) {
+        return null; // Retorna null si hay un error
+    }
+    return null; // Retorna null si no se encuentra el folio
+}
+    
+public static boolean retirarPiezaPorFolio(String folio, java.sql.Date fecha) {
+    Connection conn = null;
+    try {
+        conn = MyConnection.getConnection();
+        conn.setAutoCommit(false); // Desactivar el modo de autocommit
 
-            conn.commit();
-            System.out.println("Rollo retirado correctamente.");
-            return true;
-
-        } catch (SQLException e) {
-            if (conn != null) try { conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
-            e.printStackTrace();
+        // 1. Obtener el número de parte asociado al folio
+        String numeroParte = obtenerNumeroPartePorFolio(folio);
+        if (numeroParte == null) {
+            conn.rollback(); // Revertir la transacción si no se encuentra el folio
             return false;
-        } finally {
-            if (conn != null) try { conn.setAutoCommit(true); conn.close(); } catch (SQLException e) { e.printStackTrace(); }
         }
-    }
 
-    // Clase auxiliar para almacenar info de procesos con su peso_blank
-    static class ProcesoInfo {
-        int id;
-        String numeroParte;
-        double pesoBlank;
+        // 2. Insertar el registro en la tabla Retiros
+        String sqlInsertarRetiro = "INSERT INTO Retiros (Numero_Parte, Folio, Fecha_Retiro) VALUES (?, ?, ?)";
+        try (PreparedStatement pstmtInsertar = conn.prepareStatement(sqlInsertarRetiro)) {
+            pstmtInsertar.setString(1, numeroParte);
+            pstmtInsertar.setString(2, folio);
+            pstmtInsertar.setDate(3, fecha);
 
-        ProcesoInfo(int id, String numeroParte, double pesoBlank) {
-            this.id = id;
-            this.numeroParte = numeroParte;
-            this.pesoBlank = pesoBlank;
-        }
-    }
-
-    public static String obtenerNumeroPartePorFolio(String folio) {
-        String sql = "SELECT Numero_Parte FROM Almacen_Inv WHERE Folio = ?";
-        try (Connection conn = MyConnection.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setString(1, folio);
-            try (ResultSet rs = pstmt.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getString("Numero_Parte");
-                }
+            int filasAfectadas = pstmtInsertar.executeUpdate();
+            if (filasAfectadas <= 0) {
+                conn.rollback(); // Revertir la transacción si no se insertó el retiro
+                return false;
             }
-        } catch (SQLException e) {
-            System.out.println("Error al obtener el número de parte: " + e.getMessage());
         }
-        return null;
+
+        // 3. Eliminar el registro de la tabla Almacen_Inv
+        String sqlEliminarAlmacen = "DELETE FROM Almacen_Inv WHERE Folio = ?";
+        try (PreparedStatement pstmtEliminar = conn.prepareStatement(sqlEliminarAlmacen)) {
+            pstmtEliminar.setString(1, folio);
+
+            int filasAfectadas = pstmtEliminar.executeUpdate();
+            if (filasAfectadas <= 0) {
+                conn.rollback(); // Revertir la transacción si no se eliminó la pieza
+                return false;
+            }
+        }
+
+        conn.commit(); // Confirmar la transacción
+        return true;
+    } catch (SQLException e) {
+        if (conn != null) {
+            try {
+                conn.rollback(); // Revertir la transacción en caso de error
+            } catch (SQLException ex) {
+                System.out.println("Error al revertir la transacción: " + ex.getMessage());
+            }
+        }
+        System.out.println("Error al retirar la pieza: " + e.getMessage());
+        return false;
+    } finally {
+        if (conn != null) {
+            try {
+                conn.setAutoCommit(true); // Restaurar el modo de autocommit
+                conn.close();
+            } catch (SQLException e) {
+                System.out.println("Error al cerrar la conexión: " + e.getMessage());
+            }
+        }
     }
+}
+
+// Método para obtener el número de parte asociado a un folio
+public static String obtenerNumeroPartePorFolio(String folio) {
+    String sql = "SELECT Numero_Parte FROM Almacen_Inv WHERE Folio = ?";
+    try (Connection conn = MyConnection.getConnection();
+         PreparedStatement pstmt = conn.prepareStatement(sql)) {
+        pstmt.setString(1, folio);
+        try (ResultSet rs = pstmt.executeQuery()) {
+            if (rs.next()) {
+                return rs.getString("Numero_Parte"); // Retorna el número de parte
+            }
+        }
+    } catch (SQLException e) {
+        System.out.println("Error al obtener el número de parte: " + e.getMessage());
+    }
+    return null; // Retorna null si no se encuentra el folio
+}
+    
 }
